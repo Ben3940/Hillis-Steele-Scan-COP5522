@@ -22,52 +22,55 @@ void print_array_elements(char *label, int *arr, int size)
     printf("  ]\n");
 }
 
-void hillis_steele_scan(int *input, int *output, int size, MPI_Comm comm) {
-    int rank, num_procs;
-    MPI_Comm_rank(comm, &rank);
-    MPI_Comm_size(comm, &num_procs);
-
-    // copy the input to output 
-    for (int i = 0; i < size; i++) {
-        output[i] = input[i];
-    }
-
+void hillis_steele_scan(int *input, int *output, int size, MPI_Comm comm)
+{
+    int offset = 0;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     // iterate over stages
-    for (int step = 1; step < size; step *= 2) {
+    for (int step = 1; step < size; step *= 2)
+    {
         int temp[size];
 
         // each process receives values from its preceding process
-        for (int i = 0; i < size; i++) {
-            if (i >= step) {
+        for (int i = 0; i < size; i++)
+        {
+            if (i >= step)
+            {
                 temp[i] = output[i] + output[i - step];
-            } else {
+            }
+            else
+            {
                 temp[i] = output[i];
             }
         }
-        
+
         // update output with new values from temp
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < size; i++)
+        {
             output[i] = temp[i];
         }
 
-        // synchronize processes
-        MPI_Barrier(comm);  
+        if (rank =)
+
+            // synchronize processes
+            MPI_Barrier(comm);
     }
+
+    MPI_Finalize();
 }
 
-int main(int argc, char** argv) {
-    MPI_Init(&argc, &argv);
-    
-    int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
+int main(int argc, char **argv)
+{
     if (argc != 2)
     {
         printf("ERROR\n");
         printf("USAGE: ./main <number_input_elements>\n");
         return 1;
     }
+
+    int rank, num_procs;
 
     int size = atoi(argv[1]);
     int *input = malloc(sizeof(int) * size);
@@ -83,7 +86,5 @@ int main(int argc, char** argv) {
 
     free(input);
     free(output);
-
-    MPI_Finalize();
     return 0;
 }
