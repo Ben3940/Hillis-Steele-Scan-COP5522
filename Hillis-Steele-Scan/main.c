@@ -25,37 +25,50 @@ void print_array_elements(char *label, int *arr, int size)
 void hillis_steele_scan(int *input, int *output, int size, MPI_Comm comm)
 {
     int offset = 0;
+    int nth_neighbor_to_left = 1;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    // iterate over stages
-    for (int step = 1; step < size; step *= 2)
+    int index = 0;
+    // If we can look over n neighbors to left and be under array size
+    //   then we can add that value to current index value
+    while (nth_neighbor_to_left < size)
     {
-        int temp[size];
 
-        // each process receives values from its preceding process
-        for (int i = 0; i < size; i++)
+        /**
+         * Need way to denote when we have scanned over array with a given nieghbor size.
+         * Signifying when to increment nth_neighbor_to_left and scan over array again
+         * until all elements are computed in final array
+         */
+
+        // offset to impose "sliding" of threads across array elements
+        index = rank + offset;
+
+        // If thread's current index is less than array size, it should compute
+        if (index < size)
         {
-            if (i >= step)
+            int current_value = input[index];
+            if (index - nth_neighbor_to_left > 0)
             {
-                temp[i] = output[i] + output[i - step];
+                int neighbor_value = input[index - nth_neighbor_to_left];
+                output[index] = current_value + neighbor_value;
             }
             else
             {
-                temp[i] = output[i];
+                output[index] = current_value;
             }
         }
 
-        // update output with new values from temp
-        for (int i = 0; i < size; i++)
+        /**
+         * Rank 0 should increase offset by number of threads after a full scan over array
+         * for a given nth_neighbor_to_left
+         */
+        if (rank == 0)
         {
-            output[i] = temp[i];
         }
 
-        if (rank =)
-
-            // synchronize processes
-            MPI_Barrier(comm);
+        // synchronize processes
+        MPI_Barrier(comm);
     }
 
     MPI_Finalize();
