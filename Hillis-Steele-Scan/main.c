@@ -14,6 +14,12 @@ void init_input_array(int *arr, int size)
         arr[i] = i + 1;
 }
 
+void copy_array_values(int *input, int *output, int size)
+{
+    for (int i = 0; i < size; i++)
+        output[i] = input[i];
+};
+
 void print_array_elements(char *label, int *arr, int size)
 {
     printf("%s \t [", label);
@@ -22,54 +28,39 @@ void print_array_elements(char *label, int *arr, int size)
     printf("  ]\n");
 }
 
-void hillis_steele_scan(int *input, int *output, int size, MPI_Comm comm)
+void hillis_steele_scan(int argc, char **argv, int *input, int *output, int *temp, int size, MPI_Comm comm)
 {
-    int offset = 0;
+    int rank, num_procs;
     int nth_neighbor_to_left = 1;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-    int index = 0;
-    // If we can look over n neighbors to left and be under array size
-    //   then we can add that value to current index value
+    int index = rank;
     while (nth_neighbor_to_left < size)
     {
-
-        /**
-         * Need way to denote when we have scanned over array with a given nieghbor size.
-         * Signifying when to increment nth_neighbor_to_left and scan over array again
-         * until all elements are computed in final array
-         */
-
-        // offset to impose "sliding" of threads across array elements
-        index = rank + offset;
-
-        // If thread's current index is less than array size, it should compute
-        if (index < size)
+        while (index < size)
         {
-            int current_value = input[index];
-            if (index - nth_neighbor_to_left > 0)
+            int current_value = output[index];
+            if (index - nth_neighbor_to_left >= 0)
             {
-                int neighbor_value = input[index - nth_neighbor_to_left];
+                int neighbor_value = output[index - nth_neighbor_to_left];
                 output[index] = current_value + neighbor_value;
             }
             else
             {
                 output[index] = current_value;
             }
+            // offset to impose "sliding" of threads across array elements
+            index += num_procs;
         }
 
-        /**
-         * Rank 0 should increase offset by number of threads after a full scan over array
-         * for a given nth_neighbor_to_left
-         */
-        if (rank == 0)
-        {
-        }
+        nth_neighbor_to_left++;
 
         // synchronize processes
         MPI_Barrier(comm);
     }
+    print_array_elements("Input Array", input, size);
+    print_array_elements("Output Array", output, size);
 
     MPI_Finalize();
 }
@@ -88,16 +79,15 @@ int main(int argc, char **argv)
     int size = atoi(argv[1]);
     int *input = malloc(sizeof(int) * size);
     int *output = malloc(sizeof(int) * size);
+    int *temp = malloc(sizeof(int) * size);
 
     init_input_array(input, size);
-    init_zero_array(output, size);
+    copy_array_values(input, output, size);
 
-    hillis_steele_scan(input, output, size, MPI_COMM_WORLD);
-
-    print_array_elements("Input Array", input, size);
-    print_array_elements("Output Array", output, size);
+    hillis_steele_scan(argc, argv, input, output, temp, size, MPI_COMM_WORLD);
 
     free(input);
     free(output);
+    free(temp);
     return 0;
 }
