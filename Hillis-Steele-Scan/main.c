@@ -32,6 +32,7 @@ void print_array_elements(char *label, int *arr, int size)
 void hillis_steele_scan(int argc, char **argv, int *input, int *output, int size, MPI_Comm comm)
 {
     int rank, num_procs;
+    int step = 0;
     int nth_neighbor_to_left = 1;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -43,9 +44,9 @@ void hillis_steele_scan(int argc, char **argv, int *input, int *output, int size
 
     int log_n = ceil(log(size));
 
-    // MPI_Allgather(temp, send_count, MPI_INT, output, send_count, MPI_INT, comm);
-    while (nth_neighbor_to_left <= log_n + 1)
+    while (step <= log_n + 1)
     {
+        MPI_Barrier(comm);
         int local_index = 0;
         index = rank;
         while (index < size)
@@ -54,20 +55,18 @@ void hillis_steele_scan(int argc, char **argv, int *input, int *output, int size
             if (index - nth_neighbor_to_left >= 0)
             {
                 int neighbor_value = output[index - nth_neighbor_to_left];
-                // output[index] = current_value + neighbor_value;
                 temp[local_index] = current_value + neighbor_value;
             }
             else
             {
-                // output[index] = current_value;
                 temp[local_index] = current_value;
             }
             // offset to impose "sliding" of threads across array elements
             index += num_procs;
             local_index++;
         }
-
-        nth_neighbor_to_left++;
+        step++;
+        nth_neighbor_to_left *= 2;
 
         if (rank == 0)
         {
@@ -85,7 +84,6 @@ void hillis_steele_scan(int argc, char **argv, int *input, int *output, int size
                     output[sender + (i * (num_procs))] = val;
                 }
             }
-            MPI_Bcast(output, size, MPI_INT, 0, MPI_COMM_WORLD);
         }
         else
         {
@@ -94,10 +92,9 @@ void hillis_steele_scan(int argc, char **argv, int *input, int *output, int size
                 MPI_Send(&temp[i], send_count, MPI_INT, 0, 0, comm);
             }
         }
+        MPI_Bcast(output, size, MPI_INT, 0, MPI_COMM_WORLD);
     }
-    //     // synchronize processes
-    //     // MPI_Barrier(comm);
-    // }
+
     if (rank == 0)
     {
         print_array_elements("Input Array", input, size);
