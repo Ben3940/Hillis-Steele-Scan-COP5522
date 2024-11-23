@@ -38,6 +38,12 @@ void hillis_steele_scan(int argc, char **argv, int *input, int *output, int size
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     MPI_Status status;
+
+    if (size % num_procs != 0 && rank == 0)
+    {
+        printf("Input array size must be divisible by thread count\n");
+        MPI_Abort(comm, 1);
+    }
     int index = rank;
     int send_count = size / num_procs;
     int *temp = malloc((sizeof(int) * size) / num_procs);
