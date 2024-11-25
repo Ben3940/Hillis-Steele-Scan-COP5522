@@ -1,3 +1,4 @@
+#include <microtime.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -19,6 +20,11 @@ void print_array_elements(char *label, int *arr, int size)
     for (int i = 0; i < size; i++)
         printf("%3i", arr[i]);
     printf("  ]\n");
+}
+
+void print_total_sum(int *arr, int size)
+{
+    printf("Total Sum: %i\n", arr[size - 1]);
 }
 
 void compute_inclusive_scan(int *input, int *output, int size)
@@ -47,10 +53,18 @@ int main(int argc, char **argv)
     init_input_array(input, size);
     init_zero_array(output, size);
 
+    double time1 = microtime();
     compute_inclusive_scan(input, output, size);
+    double time2 = microtime();
 
-    print_array_elements("Input Array", input, size);
-    print_array_elements("Output Array", output, size);
+    // print_array_elements("Input Array", input, size);
+    // print_array_elements("Output Array", output, size);
+    double t = time2 - time1;
+
+    // Print results
+    printf("\nTime = %g us\n", t);
+    printf("Timer Resolution = %g us\n", getMicrotimeResolution());
+    print_total_sum(output, size);
 
     free(input);
     free(output);
