@@ -35,6 +35,7 @@ void hillis_steele_scan(int argc, char **argv, int *input, int *output, int size
     int rank, num_procs;
     int step = 0;
     int nth_neighbor_to_left = 1;
+    double time1 = 0;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
@@ -47,6 +48,11 @@ void hillis_steele_scan(int argc, char **argv, int *input, int *output, int size
 
     // Calculate number of steps for the scan operation (log2(size))
     int log_n = ceil(log(size) / log(2));
+
+    if (rank == 0)
+    {
+        time1 = MPI_Wtime();
+    }
 
     while (step <= log_n + 1)
     {
@@ -110,8 +116,9 @@ void hillis_steele_scan(int argc, char **argv, int *input, int *output, int size
     // Only process 0 prints the result arrays
     if (rank == 0)
     {
-        //print_array_elements("Input Array", input, size);
-        //print_array_elements("Output Array", output, size);
+        double t = MPI_Wtime() - time1;
+        printf("Time: %f us\n", t * 1e6);
+        printf("Last element: %i\n", output[size - 1]);
     }
 
     MPI_Finalize();
@@ -127,14 +134,14 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    double time1, time2, t;
     int rank, num_procs;
 
     int size = atoi(argv[1]);
     int *input = malloc(sizeof(int) * size);
     int *output = malloc(sizeof(int) * size);
 
-    if (input == NULL || output == NULL) {
+    if (input == NULL || output == NULL)
+    {
         fprintf(stderr, "Memory allocation failed for input or output array\n");
         return 1;
     }
@@ -144,14 +151,7 @@ int main(int argc, char **argv)
     // Copy the input array to the output array
     copy_array_values(input, output, size);
 
-    // Measure the execution time of the Hillis-Steele scan
-    time1 = microtime();
     hillis_steele_scan(argc, argv, input, output, size, MPI_COMM_WORLD);
-    time2 = microtime();
-    t = time2 - time1;
-
-    printf("\nTime = %g us\n", t);
-    printf("Timer Resolution = %g us\n", getMicrotimeResolution());
 
     // Free dynamically allocated memory
     free(input);
